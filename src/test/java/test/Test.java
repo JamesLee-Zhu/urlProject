@@ -2,7 +2,6 @@ package test;
 
 public class Test {
 public void a(){
-	int a = 999;
-	boolean b = false;
+	float b = 1f;
 }
 }
