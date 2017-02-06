@@ -2,6 +2,7 @@ package test;
 
 public class Test {
 public void a(){
-	int a = 999; 
+	int a = 0; 
+	float b = 1f;
 }
 }
