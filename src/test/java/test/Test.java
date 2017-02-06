@@ -2,7 +2,6 @@ package test;
 
 public class Test {
 public void a(){
-	int a = 2;    
-	
+	int a = 10;
 }
 }
