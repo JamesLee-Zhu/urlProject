@@ -2,6 +2,6 @@ package test;
 
 public class Test {
 public void a(){
-	int a = 15;     
+	int a = 15;  
 }
 }
