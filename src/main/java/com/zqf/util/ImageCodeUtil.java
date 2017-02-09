@@ -21,9 +21,9 @@ public class ImageCodeUtil {
 	 * @addDate 2017年1月17日下午2:58:16
 	 * @description 生成随机中文或英文数字验证码图片
 	 * @param userChinese
-	 *            ：是否生成中文验证码
+	 *            ：是否生成中文验证码（true，中文，false，英文）
 	 * @param useBaseCode
-	 *            ：是否使用基础中文字库
+	 *            ：是否使用基础中文字库（true，常用汉字，false，所有汉字）
 	 * @return 返回随机字
 	 */
 	public static String getRandomCode(HttpServletResponse response, Boolean userChinese, Boolean useBaseCode) throws IOException {
@@ -158,4 +158,5 @@ public class ImageCodeUtil {
 		String s = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789";
 		return s.charAt(r.nextInt(s.length()));
 	}
+	
 }
