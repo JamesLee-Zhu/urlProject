@@ -36,6 +36,7 @@ import javax.crypto.Cipher;
 public class RSAUtils {
 	public static final String KEY_ALGORTHM = "RSA";//
 	public static final String SIGNATURE_ALGORITHM = "SHA1withRSA";
+
 	public static final String PUBLIC_KEY = "RSAPublicKey";// 公钥
 	public static final String PRIVATE_KEY = "RSAPrivateKey";// 私钥
 
@@ -53,7 +54,7 @@ public class RSAUtils {
 	 */
 	public static boolean verify(byte[] data, String publicKey, String sign) throws Exception {
 		// 解密公钥
-		byte[] keyBytes = EncryptUtil.decryptBASE64(publicKey);
+		byte[] keyBytes = Coder.decryptBASE64(publicKey);
 		// 构造X509EncodedKeySpec对象
 		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(keyBytes);
 		// 指定加密算法
@@ -65,7 +66,7 @@ public class RSAUtils {
 		signature.initVerify(publicKey2);
 		signature.update(data);
 		// 验证签名是否正常
-		return signature.verify(EncryptUtil.decryptBASE64(sign));
+		return signature.verify(Coder.decryptBASE64(sign));
 
 	}
 
@@ -81,7 +82,7 @@ public class RSAUtils {
 	 */
 	public static String sign(byte[] data, String privateKey) throws Exception {
 		// 解密私钥
-		byte[] keyBytes = EncryptUtil.decryptBASE64(privateKey);
+		byte[] keyBytes = Coder.decryptBASE64(privateKey);
 		// 构造PKCS8EncodedKeySpec对象
 		PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(keyBytes);
 		// 指定加密算法
@@ -93,7 +94,7 @@ public class RSAUtils {
 		signature.initSign(privateKey2);
 		signature.update(data);
 
-		return EncryptUtil.encryptBASE64(signature.sign());
+		return Coder.encryptBASE64(signature.sign());
 	}
 
 	/**
@@ -108,7 +109,7 @@ public class RSAUtils {
 	 */
 	public static byte[] decryptByPublicKey(byte[] data, String key) throws Exception {
 		// 对私钥解密
-		byte[] keyBytes = EncryptUtil.decryptBASE64(key);
+		byte[] keyBytes = Coder.decryptBASE64(key);
 		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(keyBytes);
 		KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORTHM);
 		Key publicKey = keyFactory.generatePublic(x509EncodedKeySpec);
@@ -132,7 +133,7 @@ public class RSAUtils {
 	 */
 	public static byte[] encryptByPublicKey(byte[] data, String key) throws Exception {
 		// 对公钥解密
-		byte[] keyBytes = EncryptUtil.decryptBASE64(key);
+		byte[] keyBytes = Coder.decryptBASE64(key);
 		// 取公钥
 		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(keyBytes);
 		KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORTHM);
@@ -155,7 +156,7 @@ public class RSAUtils {
 	 */
 	public static byte[] decryptByPrivateKey(byte[] data, String key) throws Exception {
 		// 对私钥解密
-		byte[] keyBytes = EncryptUtil.decryptBASE64(key);
+		byte[] keyBytes = Coder.decryptBASE64(key);
 
 		PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(keyBytes);
 		KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORTHM);
@@ -179,7 +180,7 @@ public class RSAUtils {
 	 */
 	public static byte[] encryptByPrivateKey(byte[] data, String key) throws Exception {
 		// 解密密钥
-		byte[] keyBytes = EncryptUtil.decryptBASE64(key);
+		byte[] keyBytes = Coder.decryptBASE64(key);
 		// 取私钥
 		PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(keyBytes);
 		KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORTHM);
@@ -201,7 +202,7 @@ public class RSAUtils {
 	 */
 	public static String getPublicKey(Map<String, Object> keyMap) throws Exception {
 		Key key = (Key) keyMap.get(PUBLIC_KEY);
-		return EncryptUtil.encryptBASE64(key.getEncoded());
+		return Coder.encryptBASE64(key.getEncoded());
 	}
 
 	/**
@@ -213,7 +214,7 @@ public class RSAUtils {
 	 */
 	public static String getPrivateKey(Map<String, Object> keyMap) throws Exception {
 		Key key = (Key) keyMap.get(PRIVATE_KEY);
-		return EncryptUtil.encryptBASE64(key.getEncoded());
+		return Coder.encryptBASE64(key.getEncoded());
 	}
 
 	/**
@@ -238,5 +239,5 @@ public class RSAUtils {
 
 		return keyMap;
 	}
-
+	
 }
