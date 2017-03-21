@@ -135,6 +135,8 @@ public class AESUtil {
 		System.out.println("请输入要解密的内容（密文）:");
 		content = scanner.next();
 		System.out.println("根据输入的规则" + encodeRules + "解密后的明文是:" + se.AESDncode(encodeRules, content));
+		
+		
 	}
 
 }

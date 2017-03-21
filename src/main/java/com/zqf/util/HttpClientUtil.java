@@ -3,7 +3,10 @@ package com.zqf.util;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -253,6 +256,28 @@ public class HttpClientUtil {
 			}
 		}
 		return responseContent;
+	}
+
+	public static void main(String[] args) throws Exception {
+
+		String gong = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp8drF8ZbsMqSLPDJlxlMAxvKmGTm0czHA7JxZwRnm3+FkSZW+FWTlIbAVznr/4uGfHBWYEork6kjjUykRmgyGZrFDn6g9z1LmYOs+dLELiK3tJudSh/vcxqheNdCmUqaV4n3WITtTwF/OwnCVPB638StaenYWmYxoJl4qFbUOrQIDAQAB";
+		String si = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJPClm5asbr6rr/l9y7sBlQ4iKO4MSzOBo9YavGdAcTU4JIJNbR0hLalAg/RhJNtfgYLBlucAWEbuHZIBj7nlbksM8kBQpQNdSndhgWP3auPCyQD/bTlDfLZL2VvVDEqokJNYmqtJx/1BeEOAY2Pjekh/D3NDLrRR9jw5dcHehvRAgMBAAECgYALYHIgsQ76LI8D63rqu/WIyomKwYXXw00yAEbLr6ERPKrF07u01zvYrD/KZAFnMIkBghvNNefNSEsdoFIKyd33MxOO4zRa05y2bVJwIolKNb5XawVF+/p4kG9bd0Q5CNeUvey6elrDcMbsb74nOrPJXCTC5y+dBtp8DpDeaESbGQJBAPmIxpngRkFxwEfK7kI5urWMqbGgFsr5xeJkrpQ296v3cT3PJ2H0jCPBEc8wzLzuVE2p+NALF30/E+jJuffLMwcCQQCXlrfJimGvoEcVot46y/tzfgNVeeAxzINEHQI2wRPl7c4+rr1ni5LtdT+86IxsMS7B8yRrlCUUin/HOcs4ucxnAkAPHLJyZTu8AOiVMHwHdLmS/ybTxA89Ua0jTdeo0D9locGw7ZfD/exyyeGLO7hahNCEN5QC/Xj5s9U/1t+1WxAHAkBQi+Y2MdB8KHb8+SCKL275zCBrX6oP6/Jn094kR+2RxA1N4z2C8nfssttePla2+l808UQN4ZbeVkVVD9F638bLAkEAsvMrAuW9U1bEes5sz9zTRO0IjqtigpZ2GeQhg5YweO5LG42pdcifbzNkcVF9+/YU7yhVLp9ZZPW7hUY51BWGOQ==";
+		StringBuffer sb = new StringBuffer();
+
+		// 具体某个接口的参数1
+		String key1 = "1";
+		String value1 = "11";
+		// 具体某个接口的参数2
+		String key2 = "2";
+		String value2 = "22";
+		sb.append(key1).append("#").append(value1).append("#").append(key2).append("#").append(value2);
+
+		String aesEncode = AESUtil.AESEncode("MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp8drF8ZbsMqSLPDJlxlMAxvKmGTm0czHA7JxZwRnm3", sb.toString());
+
+		HttpClientUtil util = new HttpClientUtil();
+		String sendHttpPost = util.sendHttpPost("http://192.168.1.176:8080/fintechBank-api/bankApi/depositTransfer", "content=" + aesEncode);
+		System.out.println(sendHttpPost);
+
 	}
 
 }
