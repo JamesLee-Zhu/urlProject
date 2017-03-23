@@ -10,124 +10,218 @@ import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 
 public class ImageCodeUtil {
-	private static final int WIDTH = 120;
-	private static final int HEIGHT = 30;
+	// 图片的宽度。
+	private static int width = 100;
+	// 图片的高度。
+	private static int height = 30;
+	// 验证码字符个数
+	private static int codeNum = 4;
+	// 验证码干扰线数
+	private static int lineCount = 10;
+	// 噪声率
+	private static float yawpRate = 0.01f;
+
+	public static String generateCHNCode(HttpServletResponse response) throws IOException {
+		return generateCode(response, true);
+	}
+
+	public static String generateENGCode(HttpServletResponse response) throws IOException {
+		return generateCode(response, false);
+	}
+
+	// 生成图片
+	public static String generateCode(HttpServletResponse response, boolean isChinese) throws IOException {
+		int fontHeight = height - 5;// 字体的高度
+		// 图像buffer
+		BufferedImage buffImg = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		Graphics g = buffImg.getGraphics();
+		// 设置背景色
+		g.setColor(getRandomColor(200, 250));
+		g.fillRect(0, 0, width, height);
+		// 设置干扰线
+		drawRandomLine(g);
+		// 添加噪点
+		drawNoisePoint(buffImg, yawpRate);
+		// 获取随机字符串
+		String drawRandomCode = drawRandomCode(codeNum, (Graphics2D) g, isChinese, true, true, fontHeight);
+		// 设置响应的类型格式为图片格式
+		response.setContentType("image/jpeg");
+		// 禁止图像缓存
+		response.setHeader("Pragma", "no-cache");
+		response.setHeader("Cache-Control", "no-cache");
+		response.setDateHeader("Expires", 0);
+		ServletOutputStream outputStream = response.getOutputStream();
+		ImageIO.write(buffImg, "png", outputStream);
+		outputStream.close();
+		return drawRandomCode;
+	}
 
 	/**
 	 * @author ZhuQiFeng
-	 * @addDate 2017年1月17日下午2:58:16
-	 * @description 生成随机中文或英文数字验证码图片
-	 * @param userChinese
-	 *            ：是否生成中文验证码（true，中文，false，英文）
-	 * @param useBaseCode
-	 *            ：是否使用基础中文字库（true，常用汉字，false，所有汉字）
-	 * @return 返回随机字
+	 * @addDate 2017年3月23日上午11:35:51
+	 * @description 生成图片噪点
+	 * @param yawpRate
+	 *            ：噪声率
+	 * @return TODO
 	 */
-	public static String getRandomCode(HttpServletResponse response, Boolean userChinese, Boolean useBaseCode) throws IOException {
-		response.setContentType("text/html;charset=utf-8");
-		// 创建缓存
-		BufferedImage bi = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-		// 获得画布
-		Graphics g = bi.getGraphics();
-		// 设置背影色
-		setBackGround(g);
-		// 设置边框
-		// setBorder(g);
-		// 画干扰线
-		drawRandomLine(g);
-		// 写随机数
-		String random = drawRandomNum((Graphics2D) g, userChinese, useBaseCode);
-		// 将图形写给浏览器
-		response.setContentType("image/jpeg");
-		// 发头控制浏览器不要缓存
-		response.setDateHeader("expries", -1);
-		response.setHeader("Cache-Control", "no-cache");
-		response.setHeader("Pragma", "no-cache");
-		// 将图片写给浏览器
-		ImageIO.write(bi, "jpg", response.getOutputStream());
-		return random;
+	private static void drawNoisePoint(BufferedImage buffImg, float yawpRate) {
+		Random random = new Random();
+		int area = (int) (yawpRate * width * height);
+		for (int i = 0; i < area; i++) {
+			int x = random.nextInt(width);
+			int y = random.nextInt(height);
+			buffImg.setRGB(x, y, random.nextInt(255));
+		}
 	}
 
 	/**
-	 * 设置背景色
-	 * 
-	 * @param g
+	 * @author ZhuQiFeng
+	 * @addDate 2017年3月23日上午11:36:00
+	 * @description 生成随机字符串
+	 * @param TODO
+	 * @return TODO
 	 */
-	private static void setBackGround(Graphics g) {
-		// 设置颜色
-		g.setColor(Color.WHITE);
-		// 填充区域
-		g.fillRect(0, 0, WIDTH, HEIGHT);
+	private static String drawRandomCode(int codeNum, Graphics2D g, Boolean isChinese, Boolean useBaseCode, boolean isRotation, int fontHeight) {
+		StringBuffer sb = new StringBuffer();
+		// 设置字体
+		Font font = new Font(isChinese ? "楷体" : "Fixedsys", Font.BOLD, fontHeight);
+		g.setFont(font);
+		int x = 5;
+		// 控制字数
+		for (int i = 1; i <= codeNum; i++) {
+			// 设置字体旋转角度
+			// 获取随机字
+			String ch = "";
+			if (isChinese) {
+				ch = createRandomCHN(useBaseCode);
+			} else {
+				ch = createRandomENG() + "";
+			}
+			// 设置颜色
+			g.setColor(getRandomColor(1, 200));
+			if (isRotation) {
+				int degree = new Random().nextInt() % 30;
+				// 正向角度
+				g.rotate(degree * Math.PI / 180, x, 20);
+				g.drawString(ch, x, 23);
+				// 反向角度
+				g.rotate(-degree * Math.PI / 180, x, 20);
+			} else {
+				g.drawString(ch, x, 23);
+			}
+			x += 25;
+			sb.append(ch);
+		}
+		return sb.toString();
+	}
+
+	// 得到随机颜色
+	private static Color getRandomColor(int fc, int bc) {// 给定范围获得随机颜色
+		Random random = new Random();
+		if (fc > 255)
+			fc = 255;
+		if (bc > 255)
+			bc = 255;
+		int r = fc + random.nextInt(bc - fc);
+		int g = fc + random.nextInt(bc - fc);
+		int b = fc + random.nextInt(bc - fc);
+		return new Color(r, g, b);
 	}
 
 	/**
-	 * 设置边框
-	 * 
-	 * @param g
+	 * @author ZhuQiFeng
+	 * @addDate 2017年3月23日上午11:42:51
+	 * @description 产生随机字体
+	 * @param TODO
+	 * @return TODO
+	 */
+	private static Font getRandomFont(int size) {
+		Random random = new Random();
+		Font font[] = new Font[5];
+		font[0] = new Font("Ravie", Font.PLAIN, size);
+		font[1] = new Font("Antique Olive Compact", Font.PLAIN, size);
+		font[2] = new Font("Fixedsys", Font.PLAIN, size);
+		font[3] = new Font("Wide Latin", Font.PLAIN, size);
+		font[4] = new Font("Gill Sans Ultra Bold", Font.PLAIN, size);
+		return font[random.nextInt(5)];
+	}
+
+	// 扭曲方法
+	private static void shear(Graphics g, int w1, int h1, Color color) {
+		shearX(g, w1, h1, color);
+		shearY(g, w1, h1, color);
+	}
+
+	private static void shearX(Graphics g, int w1, int h1, Color color) {
+		Random random = new Random();
+		int period = random.nextInt(2);
+		boolean borderGap = true;
+		int frames = 1;
+		int phase = random.nextInt(2);
+		for (int i = 0; i < h1; i++) {
+			double d = (double) (period >> 1) * Math.sin((double) i / (double) period + (6.2831853071795862D * (double) phase) / (double) frames);
+			g.copyArea(0, i, w1, 1, (int) d, 0);
+			if (borderGap) {
+				g.setColor(color);
+				g.drawLine((int) d, i, 0, i);
+				g.drawLine((int) d + w1, i, w1, i);
+			}
+		}
+	}
+
+	private static void shearY(Graphics g, int w1, int h1, Color color) {
+		Random random = new Random();
+		int period = random.nextInt(40) + 10; // 50;
+		boolean borderGap = true;
+		int frames = 20;
+		int phase = 7;
+		for (int i = 0; i < w1; i++) {
+			double d = (double) (period >> 1) * Math.sin((double) i / (double) period + (6.2831853071795862D * (double) phase) / (double) frames);
+			g.copyArea(i, 0, 1, h1, 0, (int) d);
+			if (borderGap) {
+				g.setColor(color);
+				g.drawLine(i, (int) d, i, 0);
+				g.drawLine(i, (int) d + h1, i, h1);
+			}
+		}
+	}
+
+	/**
+	 * @author ZhuQiFeng
+	 * @addDate 2017年3月23日上午11:45:14
+	 * @description 设置边框
+	 * @param TODO
+	 * @return TODO
 	 */
 	@SuppressWarnings("unused")
 	private static void setBorder(Graphics g) {
 		// 设置边框颜色
 		g.setColor(Color.BLUE);
 		// 边框区域
-		g.drawRect(1, 1, WIDTH - 2, HEIGHT - 2);
+		g.drawRect(1, 1, width - 2, height - 2);
 	}
 
 	/**
-	 * 画随机线条
-	 * 
-	 * @param g
+	 * @author ZhuQiFeng
+	 * @addDate 2017年3月23日上午11:45:03
+	 * @description 画随机线条
+	 * @param TODO
+	 * @return TODO
 	 */
 	private static void drawRandomLine(Graphics g) {
-		// 设置颜色
-		g.setColor(Color.GREEN);
-		// 设置线条个数并画线
-		for (int i = 0; i < 5; i++) {
-			int x1 = new Random().nextInt(WIDTH);
-			int y1 = new Random().nextInt(HEIGHT);
-			int x2 = new Random().nextInt(WIDTH);
-			int y2 = new Random().nextInt(HEIGHT);
-			g.drawLine(x1, y1, x2, y2);
+		Random random = new Random();
+		for (int i = 0; i < lineCount; i++) {
+			int xs = random.nextInt(width);
+			int ys = random.nextInt(height);
+			int xe = xs + random.nextInt(width);
+			int ye = ys + random.nextInt(height);
+			g.setColor(getRandomColor(1, 255));
+			g.drawLine(xs, ys, xe, ye);
 		}
-	}
-
-	/**
-	 * 画随机汉字
-	 * 
-	 * @param g
-	 * @return
-	 */
-	private static String drawRandomNum(Graphics2D g, Boolean userChinese, Boolean useBaseCode) {
-		StringBuffer sb = new StringBuffer();
-		// 设置颜色
-		g.setColor(Color.RED);
-		// 设置字体
-		g.setFont(new Font("楷体", Font.BOLD, 20));
-		// 准备常用汉字集
-		int x = 5;
-		// 控制字数
-		for (int i = 0; i < 4; i++) {
-			// 设置字体旋转角度
-			int degree = new Random().nextInt() % 30;
-			// 获取随机字
-			String ch = "";
-			if (userChinese) {
-				ch = createRandomCHN(useBaseCode);
-			} else {
-				ch = createRandomENG() + "";
-			}
-			sb.append(ch);
-			// 正向角度
-			g.rotate(degree * Math.PI / 180, x, 20);
-			g.drawString(ch, x, 20);
-			// 反向角度
-			g.rotate(-degree * Math.PI / 180, x, 20);
-			x += 30;
-		}
-		return sb.toString();
 	}
 
 	private static String createRandomCHN(Boolean useBaseCode) {
@@ -148,7 +242,7 @@ public class ImageCodeUtil {
 			str = new String(b, "GB2312");
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
-			str = "错";
+			str = String.valueOf(createRandomENG());
 		}
 		return str;
 	}
@@ -158,5 +252,4 @@ public class ImageCodeUtil {
 		String s = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789";
 		return s.charAt(r.nextInt(s.length()));
 	}
-	
 }
