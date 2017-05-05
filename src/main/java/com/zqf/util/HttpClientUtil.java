@@ -3,8 +3,6 @@ package com.zqf.util;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +27,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+
+import com.alibaba.fastjson.JSONObject;
 
 public class HttpClientUtil {
 	private RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(15000).setConnectTimeout(15000).setConnectionRequestTimeout(15000).build();
@@ -259,24 +259,27 @@ public class HttpClientUtil {
 	}
 
 	public static void main(String[] args) throws Exception {
-
-		String gong = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp8drF8ZbsMqSLPDJlxlMAxvKmGTm0czHA7JxZwRnm3+FkSZW+FWTlIbAVznr/4uGfHBWYEork6kjjUykRmgyGZrFDn6g9z1LmYOs+dLELiK3tJudSh/vcxqheNdCmUqaV4n3WITtTwF/OwnCVPB638StaenYWmYxoJl4qFbUOrQIDAQAB";
-		String si = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJPClm5asbr6rr/l9y7sBlQ4iKO4MSzOBo9YavGdAcTU4JIJNbR0hLalAg/RhJNtfgYLBlucAWEbuHZIBj7nlbksM8kBQpQNdSndhgWP3auPCyQD/bTlDfLZL2VvVDEqokJNYmqtJx/1BeEOAY2Pjekh/D3NDLrRR9jw5dcHehvRAgMBAAECgYALYHIgsQ76LI8D63rqu/WIyomKwYXXw00yAEbLr6ERPKrF07u01zvYrD/KZAFnMIkBghvNNefNSEsdoFIKyd33MxOO4zRa05y2bVJwIolKNb5XawVF+/p4kG9bd0Q5CNeUvey6elrDcMbsb74nOrPJXCTC5y+dBtp8DpDeaESbGQJBAPmIxpngRkFxwEfK7kI5urWMqbGgFsr5xeJkrpQ296v3cT3PJ2H0jCPBEc8wzLzuVE2p+NALF30/E+jJuffLMwcCQQCXlrfJimGvoEcVot46y/tzfgNVeeAxzINEHQI2wRPl7c4+rr1ni5LtdT+86IxsMS7B8yRrlCUUin/HOcs4ucxnAkAPHLJyZTu8AOiVMHwHdLmS/ybTxA89Ua0jTdeo0D9locGw7ZfD/exyyeGLO7hahNCEN5QC/Xj5s9U/1t+1WxAHAkBQi+Y2MdB8KHb8+SCKL275zCBrX6oP6/Jn094kR+2RxA1N4z2C8nfssttePla2+l808UQN4ZbeVkVVD9F638bLAkEAsvMrAuW9U1bEes5sz9zTRO0IjqtigpZ2GeQhg5YweO5LG42pdcifbzNkcVF9+/YU7yhVLp9ZZPW7hUY51BWGOQ==";
-		StringBuffer sb = new StringBuffer();
-
-		// 具体某个接口的参数1
-		String key1 = "1";
-		String value1 = "11";
-		// 具体某个接口的参数2
-		String key2 = "2";
-		String value2 = "22";
-		sb.append(key1).append("#").append(value1).append("#").append(key2).append("#").append(value2);
-
-		String aesEncode = AESUtil.AESEncode("MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp8drF8ZbsMqSLPDJlxlMAxvKmGTm0czHA7JxZwRnm3", sb.toString());
-
+		// 渠道密钥
+		String key = "cc6a3vGgyDK7R4v=hp6Rvj58FbkkJ9fy";
+		// 接口的参数
+		String key1 = "serviceMethod", value1 = "goTobalance";
+		String key2 = "orderNo", value2 = "12724410258751488";
+		String key3 = "state", value3 = "01";
+		Map<String, String> params = new HashMap<String, String>(3);
+		params.put(key1, value1);
+		params.put(key2, value2);
+		params.put(key3, value3);
+		// 转换json
+		String jsonString = JSONObject.toJSONString(params);
+		// 使用渠道密钥进行AES加密（加密后的字节数组做base64编码）
+		String bytes = AESUtil.AESEncode(key, jsonString);
+		Map<String, String> map = new HashMap<String, String>(1);
+		// 所有参数加密后统一使用content字段传输，channel（渠道编号）字段标识必填，以便在接收端获取对应密钥解密content
+		map.put("content", bytes);
+		map.put("channel", "001");
+		// 接口地址
+		String url = "http://127.0.0.1:8080/fintechBank-api/bankApi/njcb";
 		HttpClientUtil util = new HttpClientUtil();
-		String sendHttpPost = util.sendHttpPost("http://192.168.1.176:8080/fintechBank-api/bankApi/depositTransfer", "content=" + aesEncode);
-		System.out.println(sendHttpPost);
 
 	}
 

@@ -1,157 +1,379 @@
 package com.zqf.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
-import org.springframework.cache.Cache;
-import org.springframework.cache.support.SimpleValueWrapper;
-import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.core.RedisCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.ValueOperations;
 
-public class RedisUtil implements Cache {
+/**
+ * ParentDao 操作字符串redis缓存方法 list中的操作全是按照right方式
+ * 
+ * @author littlehow
+ * @time 2016-08-12 09:02
+ */
+public class RedisUtil {
+	/**
+	 * 日志记录
+	 */
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private RedisTemplate<String, String> redisTemplate;
 
-	private RedisTemplate<String, Object> redisTemplate;
-	private String name;
-
-	public RedisTemplate<String, Object> getRedisTemplate() {
+	public RedisTemplate<String, String> getRedisTemplate() {
 		return redisTemplate;
 	}
 
-	public void setRedisTemplate(RedisTemplate<String, Object> redisTemplate) {
+	public void setRedisTemplate(RedisTemplate<String, String> redisTemplate) {
 		this.redisTemplate = redisTemplate;
 	}
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	@Override
-	public String getName() {
-		return this.name;
-	}
-
-	@Override
-	public Object getNativeCache() {
-		return this.redisTemplate;
-	}
+	/**
+	 * 前缀
+	 */
+	public static final String KEY_PREFIX_VALUE = "dg:report:value:";
+	public static final String KEY_PREFIX_SET = "dg:report:set:";
+	public static final String KEY_PREFIX_LIST = "dg:report:list:";
 
 	/**
-	 * 从缓存中获取key
+	 * 缓存value操作
+	 * 
+	 * @param k
+	 * @param v
+	 * @param time
+	 * @return
 	 */
-	@Override
-	public ValueWrapper get(Object key) {
-		final String keyf = key.toString();
-		Object object = null;
-		object = redisTemplate.execute(new RedisCallback<Object>() {
-			public Object doInRedis(RedisConnection connection) throws DataAccessException {
-				byte[] key = keyf.getBytes();
-				byte[] value = connection.get(key);
-				if (value == null) {
-					return null;
-				}
-				return toObject(value);
-			}
-		});
-		return (object != null ? new SimpleValueWrapper(object) : null);
-	}
-
-	/**
-	 * 将一个新的key保存到缓存中 先拿到需要缓存key名称和对象，然后将其转成ByteArray
-	 */
-	@Override
-	public void put(Object key, Object value) {
-		final String keyf = key.toString();
-		final Object valuef = value;
-		final long liveTime = 60 * 60 * 2;
-		redisTemplate.execute(new RedisCallback<Long>() {
-			public Long doInRedis(RedisConnection connection) throws DataAccessException {
-				byte[] keyb = keyf.getBytes();
-				byte[] valueb = toByteArray(valuef);
-				connection.set(keyb, valueb);
-				if (liveTime > 0) {
-					connection.expire(keyb, liveTime);
-				}
-				return 1L;
-			}
-		});
-	}
-
-	private byte[] toByteArray(Object obj) {
-		byte[] bytes = null;
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	protected boolean cacheValue(String k, String v, long time) {
+		String key = KEY_PREFIX_VALUE + k;
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(bos);
-			oos.writeObject(obj);
-			oos.flush();
-			bytes = bos.toByteArray();
-			oos.close();
-			bos.close();
-		} catch (IOException ex) {
-			ex.printStackTrace();
+			ValueOperations<String, String> valueOps = redisTemplate.opsForValue();
+			valueOps.set(key, v);
+			if (time > 0)
+				redisTemplate.expire(key, time, TimeUnit.SECONDS);
+			return true;
+		} catch (Throwable t) {
+			logger.error("缓存[" + key + "]失败, value[" + v + "]", t);
 		}
-		return bytes;
+		return false;
 	}
 
-	private Object toObject(byte[] bytes) {
-		Object obj = null;
+	/**
+	 * 缓存value操作
+	 * 
+	 * @param k
+	 * @param v
+	 * @return
+	 */
+	protected boolean cacheValue(String k, String v) {
+		return cacheValue(k, v, -1);
+	}
+
+	/**
+	 * 判断缓存是否存在
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected boolean containsValueKey(String k) {
+		return containsKey(KEY_PREFIX_VALUE + k);
+	}
+
+	/**
+	 * 判断缓存是否存在
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected boolean containsSetKey(String k) {
+		return containsKey(KEY_PREFIX_SET + k);
+	}
+
+	/**
+	 * 判断缓存是否存在
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected boolean containsListKey(String k) {
+		return containsKey(KEY_PREFIX_LIST + k);
+	}
+
+	protected boolean containsKey(String key) {
 		try {
-			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-			ObjectInputStream ois = new ObjectInputStream(bis);
-			obj = ois.readObject();
-			ois.close();
-			bis.close();
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		} catch (ClassNotFoundException ex) {
-			ex.printStackTrace();
+			return redisTemplate.hasKey(key);
+		} catch (Throwable t) {
+			logger.error("判断缓存存在失败key[" + key + ", error[" + t + "]");
 		}
-		return obj;
+		return false;
 	}
 
 	/**
-	 * 删除key
+	 * 获取缓存
+	 * 
+	 * @param k
+	 * @return
 	 */
-	@Override
-	public void evict(Object key) {
-		final String keyf = key.toString();
-		redisTemplate.execute(new RedisCallback<Long>() {
-			public Long doInRedis(RedisConnection connection) throws DataAccessException {
-				RedisSerializer<String> serializer = redisTemplate.getStringSerializer();
-				Set<byte[]> set = connection.keys(serializer.serialize(keyf));
-				Long result = 0l;
-				for (byte[] keyByte : set) {
-					String key = serializer.deserialize(keyByte);
-					result = connection.del(key.getBytes());
-				}
-				return result;
-			}
-		});
-	}
-
-	/**
-	 * 清空key
-	 */
-	@Override
-	public void clear() {
-		System.out.println("clear key");
-		redisTemplate.execute(new RedisCallback<String>() {
-			public String doInRedis(RedisConnection connection) throws DataAccessException {
-				connection.flushDb();
-				return "ok";
-			}
-		});
-	}
-
-	@Override
-	public <T> T get(Object key, Class<T> type) {
+	protected String getValue(String k) {
+		try {
+			ValueOperations<String, String> valueOps = redisTemplate.opsForValue();
+			return valueOps.get(KEY_PREFIX_VALUE + k);
+		} catch (Throwable t) {
+			logger.error("获取缓存失败key[" + KEY_PREFIX_VALUE + k + ", error[" + t + "]");
+		}
 		return null;
 	}
 
+	/**
+	 * 移除缓存
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected boolean removeValue(String k) {
+		return remove(KEY_PREFIX_VALUE + k);
+	}
+
+	protected boolean removeSet(String k) {
+		return remove(KEY_PREFIX_SET + k);
+	}
+
+	protected boolean removeList(String k) {
+		return remove(KEY_PREFIX_LIST + k);
+	}
+
+	/**
+	 * 移除缓存
+	 * 
+	 * @param key
+	 * @return
+	 */
+	protected boolean remove(String key) {
+		try {
+			redisTemplate.delete(key);
+			return true;
+		} catch (Throwable t) {
+			logger.error("获取缓存失败key[" + key + ", error[" + t + "]");
+		}
+		return false;
+	}
+
+	/**
+	 * 缓存set操作
+	 * 
+	 * @param k
+	 * @param v
+	 * @param time
+	 * @return
+	 */
+	protected boolean cacheSet(String k, String v, long time) {
+		String key = KEY_PREFIX_SET + k;
+		try {
+			SetOperations<String, String> valueOps = redisTemplate.opsForSet();
+			valueOps.add(key, v);
+			if (time > 0)
+				redisTemplate.expire(key, time, TimeUnit.SECONDS);
+			return true;
+		} catch (Throwable t) {
+			logger.error("缓存[" + key + "]失败, value[" + v + "]", t);
+		}
+		return false;
+	}
+
+	/**
+	 * 缓存set
+	 * 
+	 * @param k
+	 * @param v
+	 * @return
+	 */
+	protected boolean cacheSet(String k, String v) {
+		return cacheSet(k, v, -1);
+	}
+
+	/**
+	 * 缓存set
+	 * 
+	 * @param k
+	 * @param v
+	 * @param time
+	 * @return
+	 */
+	protected boolean cacheSet(String k, Set<String> v, long time) {
+		String key = KEY_PREFIX_SET + k;
+		try {
+			SetOperations<String, String> setOps = redisTemplate.opsForSet();
+			setOps.add(key, v.toArray(new String[v.size()]));
+			if (time > 0)
+				redisTemplate.expire(key, time, TimeUnit.SECONDS);
+			return true;
+		} catch (Throwable t) {
+			logger.error("缓存[" + key + "]失败, value[" + v + "]", t);
+		}
+		return false;
+	}
+
+	/**
+	 * 缓存set
+	 * 
+	 * @param k
+	 * @param v
+	 * @return
+	 */
+	protected boolean cacheSet(String k, Set<String> v) {
+		return cacheSet(k, v, -1);
+	}
+
+	/**
+	 * 获取缓存set数据
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected Set<String> getSet(String k) {
+		try {
+			SetOperations<String, String> setOps = redisTemplate.opsForSet();
+			return setOps.members(KEY_PREFIX_SET + k);
+		} catch (Throwable t) {
+			logger.error("获取set缓存失败key[" + KEY_PREFIX_SET + k + ", error[" + t + "]");
+		}
+		return null;
+	}
+
+	/**
+	 * list缓存
+	 * 
+	 * @param k
+	 * @param v
+	 * @param time
+	 * @return
+	 */
+	protected boolean cacheList(String k, String v, long time) {
+		String key = KEY_PREFIX_LIST + k;
+		try {
+			ListOperations<String, String> listOps = redisTemplate.opsForList();
+			listOps.rightPush(key, v);
+			if (time > 0)
+				redisTemplate.expire(key, time, TimeUnit.SECONDS);
+			return true;
+		} catch (Throwable t) {
+			logger.error("缓存[" + key + "]失败, value[" + v + "]", t);
+		}
+		return false;
+	}
+
+	/**
+	 * 缓存list
+	 * 
+	 * @param k
+	 * @param v
+	 * @return
+	 */
+	protected boolean cacheList(String k, String v) {
+		return cacheList(k, v, -1);
+	}
+
+	/**
+	 * 缓存list
+	 * 
+	 * @param k
+	 * @param v
+	 * @param time
+	 * @return
+	 */
+	protected boolean cacheList(String k, List<String> v, long time) {
+		String key = KEY_PREFIX_LIST + k;
+		try {
+			ListOperations<String, String> listOps = redisTemplate.opsForList();
+			long l = listOps.rightPushAll(key, v);
+			if (time > 0)
+				redisTemplate.expire(key, time, TimeUnit.SECONDS);
+			return true;
+		} catch (Throwable t) {
+			logger.error("缓存[" + key + "]失败, value[" + v + "]", t);
+		}
+		return false;
+	}
+
+	/**
+	 * 缓存list
+	 * 
+	 * @param k
+	 * @param v
+	 * @return
+	 */
+	protected boolean cacheList(String k, List<String> v) {
+		return cacheList(k, v, -1);
+	}
+
+	/**
+	 * 获取list缓存
+	 * 
+	 * @param k
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	protected List<String> getList(String k, long start, long end) {
+		try {
+			ListOperations<String, String> listOps = redisTemplate.opsForList();
+			return listOps.range(KEY_PREFIX_LIST + k, start, end);
+		} catch (Throwable t) {
+			logger.error("获取list缓存失败key[" + KEY_PREFIX_LIST + k + ", error[" + t + "]");
+		}
+		return null;
+	}
+
+	/**
+	 * 获取总条数, 可用于分页
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected long getListSize(String k) {
+		try {
+			ListOperations<String, String> listOps = redisTemplate.opsForList();
+			return listOps.size(KEY_PREFIX_LIST + k);
+		} catch (Throwable t) {
+			logger.error("获取list长度失败key[" + KEY_PREFIX_LIST + k + "], error[" + t + "]");
+		}
+		return 0;
+	}
+
+	/**
+	 * 获取总条数, 可用于分页
+	 * 
+	 * @param listOps
+	 * @param k
+	 * @return
+	 */
+	protected long getListSize(ListOperations<String, String> listOps, String k) {
+		try {
+			return listOps.size(KEY_PREFIX_LIST + k);
+		} catch (Throwable t) {
+			logger.error("获取list长度失败key[" + KEY_PREFIX_LIST + k + "], error[" + t + "]");
+		}
+		return 0;
+	}
+
+	/**
+	 * 移除list缓存
+	 * 
+	 * @param k
+	 * @return
+	 */
+	protected boolean removeOneOfList(String k) {
+		String key = KEY_PREFIX_LIST + k;
+		try {
+			ListOperations<String, String> listOps = redisTemplate.opsForList();
+			listOps.rightPop(KEY_PREFIX_LIST + k);
+			return true;
+		} catch (Throwable t) {
+			logger.error("移除list缓存失败key[" + KEY_PREFIX_LIST + k + ", error[" + t + "]");
+		}
+		return false;
+	}
 }

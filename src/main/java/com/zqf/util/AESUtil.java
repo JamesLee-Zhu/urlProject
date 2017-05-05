@@ -1,6 +1,5 @@
 package com.zqf.util;
 
-import java.util.Scanner;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
@@ -19,6 +18,64 @@ import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
 public class AESUtil {
+
+	/**
+	 * 自动生成AES128位密钥
+	 */
+	public static String getA221() {
+		try {
+			KeyGenerator kg = KeyGenerator.getInstance("AES");
+			kg.init(256);// 要生成多少位，只需要修改这里即可128, 192或256
+			SecretKey sk = kg.generateKey();
+			byte[] b = sk.getEncoded();
+			String s = byteToHexString(b);
+			System.out.println(s);
+			System.out.println("十六进制密钥长度为" + s.length());
+			System.out.println("二进制密钥的长度为" + s.length() * 4);
+			return s;
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+			System.out.println("没有此算法。");
+		}
+		return null;
+	}
+
+	/**
+	 * 二进制byte[]转十六进制string
+	 */
+	public static String byteToHexString(byte[] bytes) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < bytes.length; i++) {
+			String strHex = Integer.toHexString(bytes[i]);
+			if (strHex.length() > 3) {
+				sb.append(strHex.substring(6));
+			} else {
+				if (strHex.length() < 2) {
+					sb.append("0" + strHex);
+				} else {
+					sb.append(strHex);
+				}
+			}
+		}
+		return sb.toString();
+	}
+
+	/**
+	 * 十六进制string转二进制byte[]
+	 */
+	public static byte[] hexStringToByte(String s) {
+		byte[] baKeyword = new byte[s.length() / 2];
+		for (int i = 0; i < baKeyword.length; i++) {
+			try {
+				baKeyword[i] = (byte) (0xff & Integer.parseInt(s.substring(i * 2, i * 2 + 2), 16));
+			} catch (Exception e) {
+				System.out.println("十六进制转byte发生错误！！！");
+				e.printStackTrace();
+			}
+		}
+		return baKeyword;
+	}
+
 	/*
 	 * 加密 1.构造密钥生成器 2.根据ecnodeRules规则初始化密钥生成器 3.产生密钥 4.创建和初始化密码器 5.内容加密 6.返回字符串
 	 */
@@ -116,27 +173,9 @@ public class AESUtil {
 	}
 
 	public static void main(String[] args) {
-		AESUtil se = new AESUtil();
-		Scanner scanner = new Scanner(System.in);
-		/*
-		 * 加密
-		 */
-		System.out.println("使用AES对称加密，请输入加密的规则");
-		String encodeRules = scanner.next();
-		System.out.println("请输入要加密的内容:");
-		String content = scanner.next();
-		System.out.println("根据输入的规则" + encodeRules + "加密后的密文是:" + se.AESEncode(encodeRules, content));
+		String a221 = AESUtil.getA221();
+		System.out.println(a221);
 
-		/*
-		 * 解密
-		 */
-		System.out.println("使用AES对称解密，请输入加密的规则：(须与加密相同)");
-		encodeRules = scanner.next();
-		System.out.println("请输入要解密的内容（密文）:");
-		content = scanner.next();
-		System.out.println("根据输入的规则" + encodeRules + "解密后的明文是:" + se.AESDncode(encodeRules, content));
-		
-		
 	}
 
 }
